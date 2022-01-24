@@ -31,7 +31,7 @@
     <groupId>com.wallumsystems</groupId>
     <artifactId>sas</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>sas</name>
+    <name>simple-accounting-system</name>
     <description>sas</description>
     <properties>
         <java.version>17</java.version>
