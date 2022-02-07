@@ -25,10 +25,9 @@ import lombok.experimental.SuperBuilder;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
-import javax.persistence.OneToMany;
 import javax.persistence.Table;
-import java.util.ArrayList;
-import java.util.Collection;
+import java.sql.Date;
+import java.sql.Timestamp;
 
 @NoArgsConstructor
 @AllArgsConstructor
@@ -37,18 +36,12 @@ import java.util.Collection;
 @ToString
 @SuperBuilder
 @Entity
-@Table(name = "account")
-public class Account extends BaseEntity {
-    @OneToMany(mappedBy = "fromAccount")
-    @Singular
-    @ToString.Exclude
-    private Collection<Record> outgoingRecords = new ArrayList<>();
+@Table(name = "recurring_record")
+public class RecurringRecordEntity extends RecordEntity {
 
-    @OneToMany(mappedBy = "fromAccount")
-    @Singular
-    @ToString.Exclude
-    private Collection<Record> incomingRecords = new ArrayList<>();
+    @Column(name = "recurrence_interval", nullable = false)
+    private Timestamp recurrenceInterval;
 
-    @Column(name = "name", nullable = false, unique = true)
-    private String name;
+    @Column(name = "start_date", nullable = false)
+    private Date startDate;
 }

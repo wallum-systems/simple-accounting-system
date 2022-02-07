@@ -23,9 +23,12 @@ package com.wallumsystems.sas.entity;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 
-import javax.persistence.*;
-import java.sql.Date;
-import java.sql.Timestamp;
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.OneToMany;
+import javax.persistence.Table;
+import java.util.ArrayList;
+import java.util.Collection;
 
 @NoArgsConstructor
 @AllArgsConstructor
@@ -34,12 +37,18 @@ import java.sql.Timestamp;
 @ToString
 @SuperBuilder
 @Entity
-@Table(name = "recurring_record")
-public class RecurringRecord extends Record {
+@Table(name = "account")
+public class AccountEntity extends BaseEntity {
+    @OneToMany(mappedBy = "fromAccountEntity")
+    @Singular
+    @ToString.Exclude
+    private Collection<RecordEntity> outgoingRecords = new ArrayList<>();
 
-    @Column(name = "recurrence_interval",  nullable = false)
-    private Timestamp recurrenceInterval;
+    @OneToMany(mappedBy = "fromAccountEntity")
+    @Singular
+    @ToString.Exclude
+    private Collection<RecordEntity> incomingRecords = new ArrayList<>();
 
-    @Column(name = "start_date", nullable = false)
-    private Date startDate;
+    @Column(name = "name", nullable = false, unique = true)
+    private String name;
 }

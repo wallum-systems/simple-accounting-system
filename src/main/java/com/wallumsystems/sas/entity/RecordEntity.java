@@ -36,14 +36,14 @@ import java.sql.Time;
 @Entity
 @Table(name = "record")
 @Inheritance(strategy = InheritanceType.JOINED)
-public class Record extends BaseEntity {
+public class RecordEntity extends BaseEntity {
     @ManyToOne(optional = false)
     @JoinColumn(name = "from_account_id", nullable = false)
-    private Account fromAccount;
+    private AccountEntity fromAccountEntity;
 
     @ManyToOne(optional = false)
     @JoinColumn(name = "to_account_id", nullable = false)
-    private Account toAccount;
+    private AccountEntity toAccountEntity;
 
     @Column(name = "description")
     private String description;
