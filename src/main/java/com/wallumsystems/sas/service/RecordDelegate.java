@@ -20,6 +20,9 @@
 
 package com.wallumsystems.sas.service;
 
+import com.wallumsystems.sas.entity.RecordEntity;
+import com.wallumsystems.sas.entity.RevertingRecordEntity;
+import com.wallumsystems.sas.entity.TaxRecordEntity;
 import com.wallumsystems.sas.repository.RecordRepository;
 import com.wallumsystems.sas.swagger.api.RecordsApiDelegate;
 import com.wallumsystems.sas.swagger.model.NewRecord;
@@ -30,7 +33,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Optional;
 
 @Service
 public class RecordDelegate implements RecordsApiDelegate {
@@ -46,14 +49,23 @@ public class RecordDelegate implements RecordsApiDelegate {
         return new ResponseEntity<>(
                 recordRepository.findAll().stream()
                         .map(EntityToComponentConverter::recordEntityToRecord)
-                        .collect(Collectors.toList())
+                        .toList()
                 , HttpStatus.OK);
     }
 
     @Override
-    public ResponseEntity<Record> postRevertRecord(String id) {
-        // TODO: implement me
-        return RecordsApiDelegate.super.postRevertRecord(id);
+    public ResponseEntity<Record> postRevertRecord(Integer id) {
+        Optional<RecordEntity> recordEntityOptional = recordRepository.findById((long) id);
+        if (recordEntityOptional.isEmpty())
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        // reverting records and tax records can not be reverted
+        if (recordEntityOptional.get() instanceof RevertingRecordEntity
+                || recordEntityOptional.get() instanceof TaxRecordEntity)
+            return new ResponseEntity<>(HttpStatus.METHOD_NOT_ALLOWED);
+        // TODO: implement my business logic
+        return new ResponseEntity<>(
+                EntityToComponentConverter.recordEntityToRecord(recordEntityOptional.get()),
+                HttpStatus.ACCEPTED);
     }
 
     @Override
