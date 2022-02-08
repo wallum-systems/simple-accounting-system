@@ -22,11 +22,8 @@ package com.wallumsystems.sas.entity;
 
 import lombok.*;
 import lombok.experimental.SuperBuilder;
-import org.hibernate.annotations.CreationTimestamp;
 
 import javax.persistence.*;
-import java.sql.Date;
-import java.sql.Time;
 
 @NoArgsConstructor
 @AllArgsConstructor
@@ -35,36 +32,9 @@ import java.sql.Time;
 @ToString
 @SuperBuilder
 @Entity
-@Table(name = "record")
+@Table(name = "reverting_record")
 @Inheritance(strategy = InheritanceType.JOINED)
-public class RecordEntity extends BaseEntity {
-    @ManyToOne(optional = false)
-    @JoinColumn(name = "from_account_id", nullable = false)
-    private AccountEntity fromAccountEntity;
-
-    @ManyToOne(optional = false)
-    @JoinColumn(name = "to_account_id", nullable = false)
-    private AccountEntity toAccountEntity;
-
-    @Column(name = "description")
-    private String description;
-
-    @Column(name = "value", nullable = false)
-    private Double value;
-
-    @Column(name = "booking_date", nullable = false)
-    private Date bookingDate;
-
-    @CreationTimestamp
-    @Column(name = "creation_time", nullable = false)
-    private Time creationTime;
-
-    @OneToOne(orphanRemoval = true)
-    @JoinColumn(name = "tax_record_id")
-    private TaxRecordEntity taxRecord;
-
-    @OneToOne(orphanRemoval = true)
-    @JoinColumn(name = "reverting_record_id")
-    private RevertingRecordEntity revertingRecord;
-
+public class RevertingRecordEntity extends RecordEntity {
+    @OneToOne(mappedBy = "revertingRecord", orphanRemoval = true)
+    private RecordEntity recordEntity;
 }
