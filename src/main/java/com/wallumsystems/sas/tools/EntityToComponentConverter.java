@@ -23,6 +23,8 @@ package com.wallumsystems.sas.tools;
 import com.wallumsystems.sas.entity.RecordEntity;
 import com.wallumsystems.sas.swagger.model.Record;
 
+import java.sql.Date;
+
 public class EntityToComponentConverter {
 
     private EntityToComponentConverter() {
@@ -42,5 +44,13 @@ public class EntityToComponentConverter {
                 .amount(null)
                 .bookingDate(null)
                 .creationTime(null);
+    }
+
+    public static RecordEntity recordToRecordEntity(Record recordToConvert) {
+        // TODO: insert the missing fields and check for the relations to other entities
+        return RecordEntity.builder()
+                .description(recordToConvert.getDescription())
+                .bookingDate(Date.valueOf(recordToConvert.getBookingDate()))
+                .build();
     }
 }
