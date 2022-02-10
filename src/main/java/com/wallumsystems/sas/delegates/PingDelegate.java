@@ -18,7 +18,7 @@
  * OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package com.wallumsystems.sas.service;
+package com.wallumsystems.sas.delegates;
 
 import com.wallumsystems.sas.swagger.api.PingApiDelegate;
 import org.springframework.http.HttpStatus;

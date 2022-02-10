@@ -18,11 +18,13 @@
  * OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package com.wallumsystems.sas.service;
+package com.wallumsystems.sas.delegates;
 
+import com.wallumsystems.sas.entity.AccountEntity;
 import com.wallumsystems.sas.entity.RecordEntity;
 import com.wallumsystems.sas.entity.RevertingRecordEntity;
 import com.wallumsystems.sas.entity.TaxRecordEntity;
+import com.wallumsystems.sas.repository.AccountRepository;
 import com.wallumsystems.sas.repository.RecordRepository;
 import com.wallumsystems.sas.swagger.api.RecordsApiDelegate;
 import com.wallumsystems.sas.swagger.model.NewRecord;
@@ -39,9 +41,11 @@ import java.util.Optional;
 public class RecordDelegate implements RecordsApiDelegate {
 
     private final RecordRepository recordRepository;
+    private final AccountRepository accountRepository;
 
-    public RecordDelegate(RecordRepository recordRepository) {
+    public RecordDelegate(RecordRepository recordRepository, AccountRepository accountRepository) {
         this.recordRepository = recordRepository;
+        this.accountRepository = accountRepository;
     }
 
     @Override
@@ -70,7 +74,14 @@ public class RecordDelegate implements RecordsApiDelegate {
 
     @Override
     public ResponseEntity<Record> postRecord(NewRecord newRecord) {
-        // TODO: implement me
-        return RecordsApiDelegate.super.postRecord(newRecord);
+        RecordEntity recordEntity = EntityToComponentConverter.newRecordToRecordEntity(newRecord);
+        Optional<AccountEntity> optionalFromAccount = accountRepository.findById(Long.valueOf(newRecord.getFrom().getId()));
+        Optional<AccountEntity> optionalToAccount = accountRepository.findById(Long.valueOf(newRecord.getTo().getId()));
+        if (optionalFromAccount.isEmpty() || optionalToAccount.isEmpty())
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        recordEntity.setFromAccountEntity(optionalFromAccount.get());
+        recordEntity.setToAccountEntity(optionalToAccount.get());
+        recordRepository.save(recordEntity);
+        return new ResponseEntity<>(EntityToComponentConverter.recordEntityToRecord(recordEntity), HttpStatus.CREATED);
     }
 }

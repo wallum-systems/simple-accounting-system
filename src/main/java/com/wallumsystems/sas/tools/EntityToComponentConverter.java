@@ -20,10 +20,16 @@
 
 package com.wallumsystems.sas.tools;
 
+import com.wallumsystems.sas.entity.AccountEntity;
 import com.wallumsystems.sas.entity.RecordEntity;
+import com.wallumsystems.sas.entity.TaxRecordEntity;
+import com.wallumsystems.sas.swagger.model.Account;
+import com.wallumsystems.sas.swagger.model.NewRecord;
 import com.wallumsystems.sas.swagger.model.Record;
 
+import java.math.BigDecimal;
 import java.sql.Date;
+import java.time.ZoneOffset;
 
 public class EntityToComponentConverter {
 
@@ -31,26 +37,49 @@ public class EntityToComponentConverter {
     }
 
     public static Record recordEntityToRecord(RecordEntity recordEntity) {
-        // TODO: insert the missing fields and check for the narrowing conversion
+        // TODO: check for the narrowing conversion
         return new Record()
                 .id(recordEntity.getId().intValue())
                 .description(recordEntity.getDescription())
-                .from(null)
-                .to(null)
-                .taxRecord(null)
-                .taxedRecord(null)
-                .revertingRecord(null)
-                .revertedRecord(null)
-                .amount(null)
-                .bookingDate(null)
-                .creationTime(null);
+                .from(accountEntityToAccount(recordEntity.getFromAccountEntity()))
+                .to(accountEntityToAccount(recordEntity.getToAccountEntity()))
+                .taxRecord(recordEntity.getTaxRecord().getId().intValue())
+                .revertingRecord(recordEntity.getRevertingRecord().getId().intValue())
+                .amount(BigDecimal.valueOf(recordEntity.getValue()))
+                .bookingDate(recordEntity.getBookingDate().toLocalDate())
+                .creationTime(recordEntity.getCreationTime().toInstant().atOffset(ZoneOffset.UTC));
     }
 
-    public static RecordEntity recordToRecordEntity(Record recordToConvert) {
+    public static RecordEntity newRecordToRecordEntity(NewRecord newRecord) {
         // TODO: insert the missing fields and check for the relations to other entities
         return RecordEntity.builder()
+                .description(newRecord.getDescription())
+                .bookingDate(Date.valueOf(newRecord.getBookingDate()))
+                .fromAccountEntity(null)
+                .toAccountEntity(null)
+                .taxRecord(recordToTaxRecordEntity(newRecord.getTaxRecord()))
+                .value(newRecord.getAmount().doubleValue())
+                .bookingDate(Date.valueOf(newRecord.getBookingDate()))
+                .build();
+    }
+
+    public static TaxRecordEntity recordToTaxRecordEntity(Record recordToConvert) {
+        // TODO: insert the missing fields and check for the relations to other entities
+        // TODO: the whole handling of this situation is not elegant.
+        //  Maybe a service is needed to have the possibility to access repositories and work this whole thing out.
+        return recordToConvert == null ? null : TaxRecordEntity.builder()
                 .description(recordToConvert.getDescription())
                 .bookingDate(Date.valueOf(recordToConvert.getBookingDate()))
+                .fromAccountEntity(null)
+                .toAccountEntity(null)
+                .value(recordToConvert.getAmount().doubleValue())
                 .build();
+    }
+
+    public static Account accountEntityToAccount(AccountEntity accountEntity) {
+        // TODO: check for the narrowing conversion
+        return new Account()
+                .id(accountEntity.getId().intValue())
+                .name(accountEntity.getName());
     }
 }
