@@ -20,16 +20,16 @@
 
 package com.wallumsystems.sas.delegates;
 
-import com.wallumsystems.sas.entity.AccountEntity;
 import com.wallumsystems.sas.entity.RecordEntity;
 import com.wallumsystems.sas.entity.RevertingRecordEntity;
 import com.wallumsystems.sas.entity.TaxRecordEntity;
-import com.wallumsystems.sas.repository.AccountRepository;
+import com.wallumsystems.sas.exception.AccountEntityNotFoundException;
 import com.wallumsystems.sas.repository.RecordRepository;
+import com.wallumsystems.sas.service.EntityToComponentConverter;
+import com.wallumsystems.sas.service.RecordService;
 import com.wallumsystems.sas.swagger.api.RecordsApiDelegate;
 import com.wallumsystems.sas.swagger.model.NewRecord;
 import com.wallumsystems.sas.swagger.model.Record;
-import com.wallumsystems.sas.tools.EntityToComponentConverter;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -41,18 +41,23 @@ import java.util.Optional;
 public class RecordDelegate implements RecordsApiDelegate {
 
     private final RecordRepository recordRepository;
-    private final AccountRepository accountRepository;
 
-    public RecordDelegate(RecordRepository recordRepository, AccountRepository accountRepository) {
+    private final RecordService recordService;
+
+    private final EntityToComponentConverter entityToComponentConverter;
+
+    public RecordDelegate(RecordRepository recordRepository, RecordService recordService, EntityToComponentConverter entityToComponentConverter) {
         this.recordRepository = recordRepository;
-        this.accountRepository = accountRepository;
+        this.recordService = recordService;
+        this.entityToComponentConverter = entityToComponentConverter;
     }
 
     @Override
     public ResponseEntity<List<Record>> getRecord() {
+        // TODO: should teh result be filtered for all the tax- and reverting records? And how are those handled?
         return new ResponseEntity<>(
                 recordRepository.findAll().stream()
-                        .map(EntityToComponentConverter::recordEntityToRecord)
+                        .map(entityToComponentConverter::recordEntityToRecord)
                         .toList()
                 , HttpStatus.OK);
     }
@@ -66,22 +71,30 @@ public class RecordDelegate implements RecordsApiDelegate {
         if (recordEntityOptional.get() instanceof RevertingRecordEntity
                 || recordEntityOptional.get() instanceof TaxRecordEntity)
             return new ResponseEntity<>(HttpStatus.METHOD_NOT_ALLOWED);
-        // TODO: implement my business logic
+        RecordEntity recordEntity = recordEntityOptional.get();
+        RevertingRecordEntity revertingRecord = recordService.getRevertingRecord(recordEntity);
+        recordEntity.setRevertingRecord(revertingRecord);
+        recordRepository.save(recordEntity);
+        // TODO: should the reverting tax record be marked as tax record of the reverting record of the original record?
+        if (recordEntity.getTaxRecord() != null) {
+            TaxRecordEntity taxRecord = recordEntity.getTaxRecord();
+            RevertingRecordEntity revertingTaxRecord = recordService.getRevertingRecord(taxRecord);
+            taxRecord.setRevertingRecord(revertingTaxRecord);
+            recordRepository.save(taxRecord);
+        }
         return new ResponseEntity<>(
-                EntityToComponentConverter.recordEntityToRecord(recordEntityOptional.get()),
+                entityToComponentConverter.recordEntityToRecord(recordEntityOptional.get()),
                 HttpStatus.ACCEPTED);
     }
 
     @Override
     public ResponseEntity<Record> postRecord(NewRecord newRecord) {
-        RecordEntity recordEntity = EntityToComponentConverter.newRecordToRecordEntity(newRecord);
-        Optional<AccountEntity> optionalFromAccount = accountRepository.findById(Long.valueOf(newRecord.getFrom().getId()));
-        Optional<AccountEntity> optionalToAccount = accountRepository.findById(Long.valueOf(newRecord.getTo().getId()));
-        if (optionalFromAccount.isEmpty() || optionalToAccount.isEmpty())
+        try {
+            RecordEntity recordEntity = entityToComponentConverter.newRecordToRecordEntity(newRecord);
+            recordRepository.save(recordEntity);
+            return new ResponseEntity<>(entityToComponentConverter.recordEntityToRecord(recordEntity), HttpStatus.CREATED);
+        } catch (AccountEntityNotFoundException e) {
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
-        recordEntity.setFromAccountEntity(optionalFromAccount.get());
-        recordEntity.setToAccountEntity(optionalToAccount.get());
-        recordRepository.save(recordEntity);
-        return new ResponseEntity<>(EntityToComponentConverter.recordEntityToRecord(recordEntity), HttpStatus.CREATED);
+        }
     }
 }
