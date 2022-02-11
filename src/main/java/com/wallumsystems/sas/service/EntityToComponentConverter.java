@@ -18,65 +18,82 @@
  * OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package com.wallumsystems.sas.tools;
+package com.wallumsystems.sas.service;
 
 import com.wallumsystems.sas.entity.AccountEntity;
 import com.wallumsystems.sas.entity.RecordEntity;
+import com.wallumsystems.sas.entity.RevertingRecordEntity;
 import com.wallumsystems.sas.entity.TaxRecordEntity;
+import com.wallumsystems.sas.exception.AccountEntityNotFoundException;
+import com.wallumsystems.sas.repository.AccountRepository;
 import com.wallumsystems.sas.swagger.model.Account;
 import com.wallumsystems.sas.swagger.model.NewRecord;
 import com.wallumsystems.sas.swagger.model.Record;
+import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.sql.Date;
 import java.time.ZoneOffset;
+import java.util.Optional;
 
+@Service
 public class EntityToComponentConverter {
 
-    private EntityToComponentConverter() {
+    private final AccountRepository accountRepository;
+
+    public EntityToComponentConverter(AccountRepository accountRepository) {
+        this.accountRepository = accountRepository;
     }
 
-    public static Record recordEntityToRecord(RecordEntity recordEntity) {
+    public Record recordEntityToRecord(RecordEntity recordEntity) {
         // TODO: check for the narrowing conversion
-        return new Record()
+        Record resultingRecord = new Record()
                 .id(recordEntity.getId().intValue())
                 .description(recordEntity.getDescription())
                 .from(accountEntityToAccount(recordEntity.getFromAccountEntity()))
                 .to(accountEntityToAccount(recordEntity.getToAccountEntity()))
-                .taxRecord(recordEntity.getTaxRecord().getId().intValue())
-                .revertingRecord(recordEntity.getRevertingRecord().getId().intValue())
                 .amount(BigDecimal.valueOf(recordEntity.getValue()))
                 .bookingDate(recordEntity.getBookingDate().toLocalDate())
                 .creationTime(recordEntity.getCreationTime().toInstant().atOffset(ZoneOffset.UTC));
+        if (recordEntity.getTaxRecord() != null)
+            resultingRecord.taxRecord(recordEntity.getTaxRecord().getId().intValue());
+        if (recordEntity.getRevertingRecord() != null)
+            resultingRecord.revertingRecord(recordEntity.getRevertingRecord().getId().intValue());
+        if (recordEntity instanceof TaxRecordEntity taxRecord)
+            resultingRecord.taxedRecord(taxRecord.getRecordEntity().getId().intValue());
+        if (recordEntity instanceof RevertingRecordEntity revertingRecord)
+            resultingRecord.revertedRecord(revertingRecord.getRecordEntity().getId().intValue());
+        return resultingRecord;
     }
 
-    public static RecordEntity newRecordToRecordEntity(NewRecord newRecord) {
-        // TODO: insert the missing fields and check for the relations to other entities
-        return RecordEntity.builder()
+    public RecordEntity newRecordToRecordEntity(NewRecord newRecord) throws AccountEntityNotFoundException {
+        Optional<AccountEntity> optionalFromAccount = accountRepository.findById(Long.valueOf(newRecord.getFrom().getId()));
+        Optional<AccountEntity> optionalToAccount = accountRepository.findById(Long.valueOf(newRecord.getTo().getId()));
+        RecordEntity resultingRecord = RecordEntity.builder()
                 .description(newRecord.getDescription())
-                .bookingDate(Date.valueOf(newRecord.getBookingDate()))
-                .fromAccountEntity(null)
-                .toAccountEntity(null)
-                .taxRecord(recordToTaxRecordEntity(newRecord.getTaxRecord()))
+                .fromAccountEntity(optionalFromAccount.orElseThrow(AccountEntityNotFoundException::new))
+                .toAccountEntity(optionalToAccount.orElseThrow(AccountEntityNotFoundException::new))
                 .value(newRecord.getAmount().doubleValue())
                 .bookingDate(Date.valueOf(newRecord.getBookingDate()))
                 .build();
+        if (newRecord.getTaxRecord() != null)
+            resultingRecord.setTaxRecord(recordToTaxRecordEntity(newRecord.getTaxRecord()));
+        return resultingRecord;
     }
 
-    public static TaxRecordEntity recordToTaxRecordEntity(Record recordToConvert) {
-        // TODO: insert the missing fields and check for the relations to other entities
-        // TODO: the whole handling of this situation is not elegant.
-        //  Maybe a service is needed to have the possibility to access repositories and work this whole thing out.
-        return recordToConvert == null ? null : TaxRecordEntity.builder()
+    public TaxRecordEntity recordToTaxRecordEntity(Record recordToConvert) throws AccountEntityNotFoundException {
+        Optional<AccountEntity> optionalFromAccount = accountRepository.findById(Long.valueOf(recordToConvert.getFrom().getId()));
+        Optional<AccountEntity> optionalToAccount = accountRepository.findById(Long.valueOf(recordToConvert.getTo().getId()));
+        return TaxRecordEntity.builder()
                 .description(recordToConvert.getDescription())
                 .bookingDate(Date.valueOf(recordToConvert.getBookingDate()))
-                .fromAccountEntity(null)
-                .toAccountEntity(null)
+                .fromAccountEntity(optionalFromAccount.orElseThrow(AccountEntityNotFoundException::new))
+                .toAccountEntity(optionalToAccount.orElseThrow(AccountEntityNotFoundException::new))
                 .value(recordToConvert.getAmount().doubleValue())
                 .build();
     }
 
-    public static Account accountEntityToAccount(AccountEntity accountEntity) {
+    public Account accountEntityToAccount(AccountEntity accountEntity) {
         // TODO: check for the narrowing conversion
         return new Account()
                 .id(accountEntity.getId().intValue())
