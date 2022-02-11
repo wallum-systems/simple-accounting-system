@@ -26,7 +26,7 @@ import org.hibernate.annotations.CreationTimestamp;
 
 import javax.persistence.*;
 import java.sql.Date;
-import java.sql.Time;
+import java.sql.Timestamp;
 
 @NoArgsConstructor
 @AllArgsConstructor
@@ -57,13 +57,13 @@ public class RecordEntity extends BaseEntity {
 
     @CreationTimestamp
     @Column(name = "creation_time", nullable = false)
-    private Time creationTime;
+    private Timestamp creationTime;
 
-    @OneToOne(orphanRemoval = true)
+    @OneToOne(orphanRemoval = true, cascade = CascadeType.ALL)
     @JoinColumn(name = "tax_record_id")
     private TaxRecordEntity taxRecord;
 
-    @OneToOne(orphanRemoval = true)
+    @OneToOne(orphanRemoval = true, cascade = CascadeType.ALL)
     @JoinColumn(name = "reverting_record_id")
     private RevertingRecordEntity revertingRecord;
 
