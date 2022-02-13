@@ -28,11 +28,13 @@ import com.wallumsystems.sas.exception.AccountEntityNotFoundException;
 import com.wallumsystems.sas.repository.AccountRepository;
 import com.wallumsystems.sas.swagger.model.Account;
 import com.wallumsystems.sas.swagger.model.NewRecord;
+import com.wallumsystems.sas.swagger.model.NoDateBaseRecord;
 import com.wallumsystems.sas.swagger.model.Record;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.sql.Date;
+import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.Optional;
 
@@ -46,12 +48,12 @@ public class EntityToComponentConverter {
     }
 
     public Record recordEntityToRecord(RecordEntity recordEntity) {
-        // TODO: check for the narrowing conversion
+        // TODO: check for the narrowing conversion (exceptions)
         Record resultingRecord = new Record()
-                .id(recordEntity.getId().intValue())
+                .id(Math.toIntExact(recordEntity.getId().intValue()))
                 .description(recordEntity.getDescription())
-                .from(accountEntityToAccount(recordEntity.getFromAccountEntity()))
-                .to(accountEntityToAccount(recordEntity.getToAccountEntity()))
+                .fromAccountId(Math.toIntExact(recordEntity.getFromAccountEntity().getId()))
+                .toAccountId(Math.toIntExact(recordEntity.getToAccountEntity().getId()))
                 .amount(BigDecimal.valueOf(recordEntity.getValue()))
                 .bookingDate(recordEntity.getBookingDate().toLocalDate())
                 .creationTime(recordEntity.getCreationTime().toInstant().atOffset(ZoneOffset.UTC));
@@ -67,8 +69,8 @@ public class EntityToComponentConverter {
     }
 
     public RecordEntity newRecordToRecordEntity(NewRecord newRecord) throws AccountEntityNotFoundException {
-        Optional<AccountEntity> optionalFromAccount = accountRepository.findById(Long.valueOf(newRecord.getFrom().getId()));
-        Optional<AccountEntity> optionalToAccount = accountRepository.findById(Long.valueOf(newRecord.getTo().getId()));
+        Optional<AccountEntity> optionalFromAccount = accountRepository.findById(Long.valueOf(newRecord.getFromAccountId()));
+        Optional<AccountEntity> optionalToAccount = accountRepository.findById(Long.valueOf(newRecord.getToAccountId()));
         RecordEntity resultingRecord = RecordEntity.builder()
                 .description(newRecord.getDescription())
                 .fromAccountEntity(optionalFromAccount.orElseThrow(AccountEntityNotFoundException::new))
@@ -77,16 +79,16 @@ public class EntityToComponentConverter {
                 .bookingDate(Date.valueOf(newRecord.getBookingDate()))
                 .build();
         if (newRecord.getTaxRecord() != null)
-            resultingRecord.setTaxRecord(recordToTaxRecordEntity(newRecord.getTaxRecord()));
+            resultingRecord.setTaxRecord(noDateBaseRecordToTaxRecordEntity(newRecord.getTaxRecord(), newRecord.getBookingDate()));
         return resultingRecord;
     }
 
-    public TaxRecordEntity recordToTaxRecordEntity(Record recordToConvert) throws AccountEntityNotFoundException {
-        Optional<AccountEntity> optionalFromAccount = accountRepository.findById(Long.valueOf(recordToConvert.getFrom().getId()));
-        Optional<AccountEntity> optionalToAccount = accountRepository.findById(Long.valueOf(recordToConvert.getTo().getId()));
+    public TaxRecordEntity noDateBaseRecordToTaxRecordEntity(NoDateBaseRecord recordToConvert, LocalDate bookingDate) throws AccountEntityNotFoundException {
+        Optional<AccountEntity> optionalFromAccount = accountRepository.findById(Long.valueOf(recordToConvert.getFromAccountId()));
+        Optional<AccountEntity> optionalToAccount = accountRepository.findById(Long.valueOf(recordToConvert.getToAccountId()));
         return TaxRecordEntity.builder()
                 .description(recordToConvert.getDescription())
-                .bookingDate(Date.valueOf(recordToConvert.getBookingDate()))
+                .bookingDate(Date.valueOf(bookingDate))
                 .fromAccountEntity(optionalFromAccount.orElseThrow(AccountEntityNotFoundException::new))
                 .toAccountEntity(optionalToAccount.orElseThrow(AccountEntityNotFoundException::new))
                 .value(recordToConvert.getAmount().doubleValue())
